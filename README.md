@@ -34,7 +34,17 @@ directly with `bun`, or at the [prebuilt Docker image](#docker-image) — either
 
 #### Claude Code / Claude Desktop
 
-Add to `mcp.json` (Claude Code: `claude mcp add`, or edit the file directly; Claude Desktop: Settings → Developer):
+This works with any Claude product that can spawn a local process — Claude Code and Claude Desktop. It does
+**not** work with claude.ai (web/mobile) "Connectors" yet, since those require a remote HTTP/SSE-based MCP server
+and this one only speaks stdio.
+
+**Claude Code** — either the CLI shortcut:
+
+```sh
+claude mcp add youtrack -e YOUTRACK_BASE_URL=https://mycompany.youtrack.cloud/api -e YOUTRACK_TOKEN=perm:xxxx -- bun run /path/to/youtrack-mcp/src/index.ts
+```
+
+(run `claude mcp add --help` to confirm the flags for your version), or edit `.mcp.json` directly:
 
 ```json
 {
@@ -50,6 +60,16 @@ Add to `mcp.json` (Claude Code: `claude mcp add`, or edit the file directly; Cla
   }
 }
 ```
+
+**Claude Desktop** — Settings → Developer → Edit Config, which opens `claude_desktop_config.json`
+(macOS: `~/Library/Application Support/Claude/`, Windows: `%APPDATA%\Claude\`). Add the same `mcpServers` block
+above, then restart Claude Desktop.
+
+Either way, no local Bun install is required — point `command`/`args` at the
+[Docker image](#using-the-docker-image-instead-of-bun) instead.
+
+Once added, just ask Claude things like *"list my unresolved issues in DEMO"* or *"create a bug in DEMO titled
+X"* — it calls the tools directly.
 
 #### VS Code
 
