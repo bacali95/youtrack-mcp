@@ -9,7 +9,7 @@ export const tagTools = [
     title: "List tags",
     description: "List all tags visible to the current user.",
     inputSchema: { fields: fieldsParam(FIELDS.tag), ...pagination },
-    handler: (client, { fields, $top, $skip }) => client.get("/tags", { fields: fields ?? FIELDS.tag, $top, $skip }),
+    handler: (client, { fields, top, skip }) => client.get("/tags", { fields: fields ?? FIELDS.tag, $top: top, $skip: skip }),
   }),
 
   defineTool({

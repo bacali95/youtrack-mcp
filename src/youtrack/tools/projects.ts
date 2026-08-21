@@ -9,8 +9,8 @@ export const projectTools = [
     title: "List projects",
     description: "List all projects visible to the current user.",
     inputSchema: { fields: fieldsParam(FIELDS.project), ...pagination },
-    handler: (client, { fields, $top, $skip }) =>
-      client.get("/admin/projects", { fields: fields ?? FIELDS.project, $top, $skip }),
+    handler: (client, { fields, top, skip }) =>
+      client.get("/admin/projects", { fields: fields ?? FIELDS.project, $top: top, $skip: skip }),
   }),
 
   defineTool({
@@ -73,7 +73,7 @@ export const projectTools = [
       fields: fieldsParam(FIELDS.projectCustomField),
       ...pagination,
     },
-    handler: (client, { id, fields, $top, $skip }) =>
-      client.get(`/admin/projects/${id}/customFields`, { fields: fields ?? FIELDS.projectCustomField, $top, $skip }),
+    handler: (client, { id, fields, top, skip }) =>
+      client.get(`/admin/projects/${id}/customFields`, { fields: fields ?? FIELDS.projectCustomField, $top: top, $skip: skip }),
   }),
 ];

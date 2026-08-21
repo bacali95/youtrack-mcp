@@ -21,8 +21,8 @@ export const userTools = [
       fields: fieldsParam(FIELDS.user),
       ...pagination,
     },
-    handler: (client, { query, fields, $top, $skip }) =>
-      client.get("/users", { query, fields: fields ?? FIELDS.user, $top, $skip }),
+    handler: (client, { query, fields, top, skip }) =>
+      client.get("/users", { query, fields: fields ?? FIELDS.user, $top: top, $skip: skip }),
   }),
 
   defineTool({
@@ -41,6 +41,6 @@ export const userTools = [
     title: "List user groups",
     description: "List user groups defined in the YouTrack instance.",
     inputSchema: { fields: fieldsParam(FIELDS.group), ...pagination },
-    handler: (client, { fields, $top, $skip }) => client.get("/groups", { fields: fields ?? FIELDS.group, $top, $skip }),
+    handler: (client, { fields, top, skip }) => client.get("/groups", { fields: fields ?? FIELDS.group, $top: top, $skip: skip }),
   }),
 ];

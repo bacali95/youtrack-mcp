@@ -11,9 +11,10 @@ export const fieldsParam = (defaultFields: string) =>
         `nested "field(subfield,...)" syntax). Defaults to: ${defaultFields}`,
     );
 
+// Named `top`/`skip` rather than YouTrack's own `$top`/`$skip`: tool schema property names can't contain `$`.
 export const pagination = {
-  $top: z.number().int().optional().describe("Maximum number of entries to return."),
-  $skip: z.number().int().optional().describe("Number of entries to skip, for pagination."),
+  top: z.number().int().optional().describe("Maximum number of entries to return."),
+  skip: z.number().int().optional().describe("Number of entries to skip, for pagination."),
 };
 
 export const entityId = (description: string) => z.string().describe(description);
