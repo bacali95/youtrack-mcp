@@ -28,7 +28,13 @@ YOUTRACK_BASE_URL=https://mycompany.youtrack.cloud/api YOUTRACK_TOKEN=perm:xxxx 
 
 ### Configure in an MCP client
 
-For example, in Claude Code / Claude Desktop's `mcp.json`:
+The server speaks MCP over stdio, so any client that can spawn a command works. It can be pointed at the source
+directly with `bun`, or at the [prebuilt Docker image](#docker-image) — either way you just need
+`YOUTRACK_BASE_URL` and `YOUTRACK_TOKEN` in its environment.
+
+#### Claude Code / Claude Desktop
+
+Add to `mcp.json` (Claude Code: `claude mcp add`, or edit the file directly; Claude Desktop: Settings → Developer):
 
 ```json
 {
@@ -44,6 +50,108 @@ For example, in Claude Code / Claude Desktop's `mcp.json`:
   }
 }
 ```
+
+#### VS Code
+
+VS Code (via GitHub Copilot Chat's agent mode) reads MCP server definitions from a workspace's `.vscode/mcp.json`
+(or your user settings — run **MCP: Add Server** from the command palette to create either). It supports
+prompting for secrets instead of hardcoding them, using `${input:...}`:
+
+```json
+{
+  "servers": {
+    "youtrack": {
+      "type": "stdio",
+      "command": "bun",
+      "args": ["run", "/path/to/youtrack-mcp/src/index.ts"],
+      "env": {
+        "YOUTRACK_BASE_URL": "https://mycompany.youtrack.cloud/api",
+        "YOUTRACK_TOKEN": "${input:youtrack-token}"
+      }
+    }
+  },
+  "inputs": [
+    {
+      "id": "youtrack-token",
+      "type": "promptString",
+      "description": "YouTrack permanent token",
+      "password": true
+    }
+  ]
+}
+```
+
+You'll be prompted for the token the first time the server starts, and it's stored securely rather than committed
+to the workspace file. Once added, enable it for a chat by opening the tools picker (🔧) in Copilot Chat's agent
+mode.
+
+#### Using the Docker image instead of `bun`
+
+Any of the configs above also work by swapping the `command`/`args` for Docker, so the client doesn't need Bun or
+this repo checked out locally — just Docker and the environment variables:
+
+```json
+{
+  "command": "docker",
+  "args": [
+    "run", "--rm", "-i",
+    "-e", "YOUTRACK_BASE_URL", "-e", "YOUTRACK_TOKEN",
+    "ghcr.io/bacali95/youtrack-mcp:latest"
+  ],
+  "env": {
+    "YOUTRACK_BASE_URL": "https://mycompany.youtrack.cloud/api",
+    "YOUTRACK_TOKEN": "perm:xxxx"
+  }
+}
+```
+
+`-i` keeps stdin open (required for MCP's stdio transport) and `--rm` cleans up the container once the client
+disconnects. `-e YOUTRACK_BASE_URL` (without a `=value`) tells Docker to forward that variable from the `env`
+block above rather than duplicating it inline.
+
+## Docker image
+
+Every push to `main` publishes an image to GitHub Container Registry (see
+[`.github/workflows/docker-build.yml`](.github/workflows/docker-build.yml)):
+
+```sh
+docker pull ghcr.io/bacali95/youtrack-mcp:latest
+docker run --rm -i \
+  -e YOUTRACK_BASE_URL=https://mycompany.youtrack.cloud/api \
+  -e YOUTRACK_TOKEN=perm:xxxx \
+  ghcr.io/bacali95/youtrack-mcp:latest
+```
+
+You can also build it locally with `docker build -t youtrack-mcp .`.
+
+### Deploying to a VPS
+
+This server talks MCP over stdio, not HTTP — there's no port to expose, and nothing needs to run continuously.
+An MCP client always works by spawning the server process itself and talking to it over that process's
+stdin/stdout, so "deploying" it means making sure the client *can* spawn it, wherever that client runs:
+
+- **Running the MCP client itself on the VPS** (e.g. a headless Claude Code / Claude Code on the web session, or
+  any agent you SSH into and drive interactively): just pull the image there and use the Docker config from above
+  in that environment's `mcp.json` — no different from a local setup.
+- **Running the MCP client on your laptop, with the server on the VPS**: have the client spawn the process over
+  SSH instead of locally, so Docker only needs to exist on the VPS:
+
+  ```json
+  {
+    "command": "ssh",
+    "args": [
+      "user@your-vps",
+      "docker", "run", "--rm", "-i",
+      "-e", "YOUTRACK_BASE_URL=https://mycompany.youtrack.cloud/api",
+      "-e", "YOUTRACK_TOKEN=perm:xxxx",
+      "ghcr.io/bacali95/youtrack-mcp:latest"
+    ]
+  }
+  ```
+
+  Set up an SSH key (no passphrase prompt) for that host so the client can spawn it non-interactively. Since the
+  token is passed as a literal argument here, restrict that SSH key/user as tightly as you can (e.g. a
+  dedicated user that can only run this one `docker run` command via a forced command in `authorized_keys`).
 
 ## Tools
 
