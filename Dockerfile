@@ -7,6 +7,7 @@ RUN bun build src/index.ts --target bun --outfile dist/index.js
 
 FROM oven/bun:1-slim
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/dist/index.js ./index.js
 
 USER bun
