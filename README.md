@@ -28,15 +28,17 @@ YOUTRACK_BASE_URL=https://mycompany.youtrack.cloud/api YOUTRACK_TOKEN=perm:xxxx 
 
 ### Configure in an MCP client
 
-The server speaks MCP over stdio, so any client that can spawn a command works. It can be pointed at the source
-directly with `bun`, or at the [prebuilt Docker image](#docker-image) — either way you just need
-`YOUTRACK_BASE_URL` and `YOUTRACK_TOKEN` in its environment.
+By default the server speaks MCP over **stdio**, so any client that can spawn a command works — point it at the
+source directly with `bun`, or at the [prebuilt Docker image](#docker-image), either way with `YOUTRACK_BASE_URL`
+and `YOUTRACK_TOKEN` in its environment. It can also run as a standalone **HTTP** service instead (see
+[Running as a network service](#running-as-a-network-service-http-transport)), for clients that connect over the
+network rather than spawning a process — including claude.ai's web/mobile "Connectors".
 
 #### Claude Code / Claude Desktop
 
-This works with any Claude product that can spawn a local process — Claude Code and Claude Desktop. It does
-**not** work with claude.ai (web/mobile) "Connectors" yet, since those require a remote HTTP/SSE-based MCP server
-and this one only speaks stdio.
+This (stdio) works with any Claude product that can spawn a local process — Claude Code and Claude Desktop.
+claude.ai (web/mobile) "Connectors" need a remote HTTP-based MCP server instead; see
+[Running as a network service](#running-as-a-network-service-http-transport) for that.
 
 **Claude Code** — either the CLI shortcut:
 
@@ -129,6 +131,57 @@ this repo checked out locally — just Docker and the environment variables:
 disconnects. `-e YOUTRACK_BASE_URL` (without a `=value`) tells Docker to forward that variable from the `env`
 block above rather than duplicating it inline.
 
+## Running as a network service (HTTP transport)
+
+Set `MCP_TRANSPORT=http` to run the server as a standalone process listening on the network instead of
+speaking stdio to a spawned-in client. This is what lets it be hosted on a PaaS like Coolify, or reached by
+clients that connect over HTTP rather than spawning a command (e.g. claude.ai Connectors).
+
+Environment variables, in addition to `YOUTRACK_BASE_URL`/`YOUTRACK_TOKEN`:
+
+- `MCP_TRANSPORT=http` — switches from the stdio default to HTTP.
+- `MCP_HTTP_TOKEN` — **required** in HTTP mode. A secret bearer token clients must send; without this, anyone
+  who reaches the URL could use your YouTrack token through it.
+- `PORT` — port to listen on (default `3000`).
+
+It serves two routes:
+
+- `GET /health` — unauthenticated liveness check, for the PaaS's health probe.
+- `ALL /mcp` — the MCP endpoint (Streamable HTTP), gated on `Authorization: Bearer <MCP_HTTP_TOKEN>`.
+
+```sh
+docker run --rm -p 3000:3000 \
+  -e YOUTRACK_BASE_URL=https://mycompany.youtrack.cloud/api \
+  -e YOUTRACK_TOKEN=perm:xxxx \
+  -e MCP_TRANSPORT=http \
+  -e MCP_HTTP_TOKEN=$(openssl rand -hex 32) \
+  ghcr.io/bacali95/youtrack-mcp:latest
+```
+
+Point an HTTP-capable MCP client at `http://<host>:3000/mcp` with that bearer token, e.g. Claude Code's CLI:
+
+```sh
+claude mcp add --transport http youtrack http://<host>:3000/mcp --header "Authorization: Bearer <MCP_HTTP_TOKEN>"
+```
+
+or the generic client JSON shape most others use:
+
+```json
+{
+  "mcpServers": {
+    "youtrack": {
+      "type": "http",
+      "url": "http://<host>:3000/mcp",
+      "headers": { "Authorization": "Bearer <MCP_HTTP_TOKEN>" }
+    }
+  }
+}
+```
+
+Put this behind TLS (a PaaS's built-in proxy, or your own reverse proxy) before exposing it beyond your own
+machine — the bearer token is the only thing standing between the internet and your YouTrack instance, and it
+travels in a plain header.
+
 ## Docker image
 
 Every push to `main` publishes an image to GitHub Container Registry (see
@@ -144,11 +197,31 @@ docker run --rm -i \
 
 You can also build it locally with `docker build -t youtrack-mcp .`.
 
-### Deploying to a VPS
+### Hosting on a PaaS (Coolify, etc.)
 
-This server talks MCP over stdio, not HTTP — there's no port to expose, and nothing needs to run continuously.
-An MCP client always works by spawning the server process itself and talking to it over that process's
-stdin/stdout, so "deploying" it means making sure the client *can* spawn it, wherever that client runs:
+Coolify (and similar platforms — Railway, Render, etc.) deploy long-running services that listen on a port and
+answer health checks, which is exactly what [HTTP transport mode](#running-as-a-network-service-http-transport)
+gives you. In Coolify:
+
+1. New Resource → **Docker Image**, and set it to `ghcr.io/bacali95/youtrack-mcp:latest` (or point it at this
+   repo as a **Dockerfile**-based deployment if you'd rather it build from source).
+2. Set the **Port** to `3000` (matches the image's `EXPOSE`; change it and `PORT` together if you want a
+   different one).
+3. Set the **Health check path** to `/health`.
+4. Add environment variables: `YOUTRACK_BASE_URL`, `YOUTRACK_TOKEN`, `MCP_TRANSPORT=http`, and `MCP_HTTP_TOKEN`
+   (generate one with `openssl rand -hex 32` — mark it "secret" in Coolify's UI so it isn't shown in logs).
+5. Deploy. Coolify gives you a domain with TLS already handled by its proxy — use
+   `https://<your-domain>/mcp` with that bearer token in any HTTP-capable MCP client, as shown above.
+
+This isn't specific to Coolify: any platform that deploys a Docker image, sets environment variables, and can
+health-check a path works the same way.
+
+### Deploying to a VPS (stdio, no exposed port)
+
+If you'd rather not expose a port at all, the stdio approach still works on a plain VPS — there's nothing to
+run continuously, and an MCP client works the same way it does locally: by spawning the process itself and
+talking to it over that process's stdin/stdout. "Deploying" it just means making sure the client *can* spawn it,
+wherever that client runs:
 
 - **Running the MCP client itself on the VPS** (e.g. a headless Claude Code / Claude Code on the web session, or
   any agent you SSH into and drive interactively): just pull the image there and use the Docker config from above
@@ -204,6 +277,8 @@ default, so you only need to specify it when you want more or less data back.
 - `src/tool.ts` — `defineTool` + `registerTools`, so each tool file only declares a name/description/schema/handler
   and the MCP response/error wrapping happens in one place.
 - `src/youtrack/tools/*.ts` — one file per resource, each tool a few lines built on the shared pieces above.
+- `src/transport/http.ts` — the HTTP transport, reusing the exact same `allTools`/`registerTools` as stdio; it
+  just runs a session's `McpServer` behind a bearer-token check instead of over stdin/stdout.
 
 ## Development
 
