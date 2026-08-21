@@ -13,8 +13,8 @@ export const workItemTools = [
       fields: fieldsParam(FIELDS.workItem),
       ...pagination,
     },
-    handler: (client, { issueId, fields, $top, $skip }) =>
-      client.get(`/issues/${issueId}/timeTracking/workItems`, { fields: fields ?? FIELDS.workItem, $top, $skip }),
+    handler: (client, { issueId, fields, top, skip }) =>
+      client.get(`/issues/${issueId}/timeTracking/workItems`, { fields: fields ?? FIELDS.workItem, $top: top, $skip: skip }),
   }),
 
   defineTool({
@@ -80,7 +80,7 @@ export const workItemTools = [
       fields: fieldsParam(FIELDS.workItem),
       ...pagination,
     },
-    handler: (client, { author, startDate, endDate, fields, $top, $skip }) =>
-      client.get("/workItems", { author, startDate, endDate, fields: fields ?? FIELDS.workItem, $top, $skip }),
+    handler: (client, { author, startDate, endDate, fields, top, skip }) =>
+      client.get("/workItems", { author, startDate, endDate, fields: fields ?? FIELDS.workItem, $top: top, $skip: skip }),
   }),
 ];

@@ -24,7 +24,7 @@ export const linkTools = [
       fields: fieldsParam(FIELDS.linkType),
       ...pagination,
     },
-    handler: (client, { fields, $top, $skip }) =>
-      client.get("/issueLinkTypes", { fields: fields ?? FIELDS.linkType, $top, $skip }),
+    handler: (client, { fields, top, skip }) =>
+      client.get("/issueLinkTypes", { fields: fields ?? FIELDS.linkType, $top: top, $skip: skip }),
   }),
 ];

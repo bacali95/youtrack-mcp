@@ -9,8 +9,8 @@ export const articleTools = [
     title: "List knowledge base articles",
     description: "List articles in the YouTrack knowledge base.",
     inputSchema: { fields: fieldsParam(FIELDS.article), ...pagination },
-    handler: (client, { fields, $top, $skip }) =>
-      client.get("/articles", { fields: fields ?? FIELDS.article, $top, $skip }),
+    handler: (client, { fields, top, skip }) =>
+      client.get("/articles", { fields: fields ?? FIELDS.article, $top: top, $skip: skip }),
   }),
 
   defineTool({

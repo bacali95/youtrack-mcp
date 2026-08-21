@@ -13,8 +13,8 @@ export const commentTools = [
       fields: fieldsParam(FIELDS.comment),
       ...pagination,
     },
-    handler: (client, { issueId, fields, $top, $skip }) =>
-      client.get(`/issues/${issueId}/comments`, { fields: fields ?? FIELDS.comment, $top, $skip }),
+    handler: (client, { issueId, fields, top, skip }) =>
+      client.get(`/issues/${issueId}/comments`, { fields: fields ?? FIELDS.comment, $top: top, $skip: skip }),
   }),
 
   defineTool({

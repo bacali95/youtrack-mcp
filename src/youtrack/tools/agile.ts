@@ -8,7 +8,7 @@ export const agileTools = [
     title: "List agile boards",
     description: "List the agile boards visible to the current user.",
     inputSchema: { fields: fieldsParam(FIELDS.agile), ...pagination },
-    handler: (client, { fields, $top, $skip }) => client.get("/agiles", { fields: fields ?? FIELDS.agile, $top, $skip }),
+    handler: (client, { fields, top, skip }) => client.get("/agiles", { fields: fields ?? FIELDS.agile, $top: top, $skip: skip }),
   }),
 
   defineTool({
@@ -31,8 +31,8 @@ export const agileTools = [
       fields: fieldsParam(FIELDS.sprint),
       ...pagination,
     },
-    handler: (client, { agileId, fields, $top, $skip }) =>
-      client.get(`/agiles/${agileId}/sprints`, { fields: fields ?? FIELDS.sprint, $top, $skip }),
+    handler: (client, { agileId, fields, top, skip }) =>
+      client.get(`/agiles/${agileId}/sprints`, { fields: fields ?? FIELDS.sprint, $top: top, $skip: skip }),
   }),
 
   defineTool({

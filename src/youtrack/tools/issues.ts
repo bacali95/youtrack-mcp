@@ -15,8 +15,8 @@ export const issueTools = [
       fields: fieldsParam(FIELDS.issue),
       ...pagination,
     },
-    handler: (client, { query, fields, $top, $skip }) =>
-      client.get("/issues", { query, fields: fields ?? FIELDS.issue, $top, $skip }),
+    handler: (client, { query, fields, top, skip }) =>
+      client.get("/issues", { query, fields: fields ?? FIELDS.issue, $top: top, $skip: skip }),
   }),
 
   defineTool({
